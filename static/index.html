@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartBite - Your AI Food Assistant</title>
+    <!-- Modern Typography from Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="dynamic-background">
+        <div class="blob blob1"></div>
+        <div class="blob blob2"></div>
+        <div class="blob blob3"></div>
+    </div>
+
+    <main class="app-container">
+        <!-- Header -->
+        <header>
+            <h1 class="logo">SmartBite<span>.</span></h1>
+            <p class="subtitle">Your context-aware nutrition assistant</p>
+        </header>
+
+        <!-- Step 1: Onboarding Questionnaire -->
+        <section id="step1" class="step-container active">
+            <h2 class="step-title">Let's craft your perfect meal</h2>
+            <form id="preferencesForm" class="glass-form">
+                
+                <div class="input-group">
+                    <label for="goals">Health Goals 🎯</label>
+                    <input type="text" id="goals" placeholder="e.g., Weight loss, Muscle gain, Maintenance" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="diet">Dietary Preferences 🥗</label>
+                    <input type="text" id="diet" placeholder="e.g., Vegan, Gluten-free, Keto, No restrictions" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="ingredients">What's in your fridge? 🛒</label>
+                    <textarea id="ingredients" placeholder="e.g., Chicken breast, spinach, eggs, rice..." rows="3" required></textarea>
+                </div>
+
+                <button type="submit" class="btn-primary" id="btn-submit">
+                    <span>Generate Magic</span>
+                    <div class="spinner hidden" id="loadingSpinner"></div>
+                </button>
+            </form>
+        </section>
+
+        <!-- Step 2: Recommendations Dashboard -->
+        <section id="step2" class="step-container">
+            <button class="btn-back" id="btn-back">← Start Over</button>
+            <div id="recipeResult" class="glass-result">
+                <!-- Gemini content will be injected here -->
+            </div>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
