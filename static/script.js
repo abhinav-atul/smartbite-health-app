@@ -1,47 +1,49 @@
 /**
- * SmartBite — Client-side application logic
- * Handles: Google Sign-In, step transitions, API calls, meal history.
+ * SmartBite — Client Application v3
+ * Multi-view SPA: Landing → Profile → Dashboard
+ * Integrates: Google Sign-In, Gemini recommendations, Health analysis
  */
 
-// ───────────────────────── CONFIG ─────────────────────────
-// Replace with your own Google OAuth Client ID (or leave empty for demo flow)
-const GOOGLE_CLIENT_ID = "";   // Set from Google Cloud Console
+// ── Config ──────────────────────────────────────────────────────
+const GOOGLE_CLIENT_ID = "";  // Set via Google Cloud Console for production
 
-// ───────────────────────── DOM REFS ─────────────────────────
-const $ = (sel) => document.querySelector(sel);
-const welcomeSection  = $("#welcomeSection");
-const step1           = $("#step1");
-const step2           = $("#step2");
-const preferencesForm = $("#preferencesForm");
-const btnSubmit       = $("#btn-submit");
-const btnBack         = $("#btn-back");
-const btnLogout       = $("#btnLogout");
-const recipeResult    = $("#recipeResult");
-const loadingSpinner  = $("#loadingSpinner");
-const btnText         = $(".btn-text");
-const userMenu        = $("#userMenu");
-const userAvatar      = $("#userAvatar");
-const userNameEl      = $("#userName");
+// ── DOM Helpers ─────────────────────────────────────────────────
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => document.querySelectorAll(s);
 
-let currentUser = null;
+// ── Refs ────────────────────────────────────────────────────────
+const views = {
+    landing:   $("#viewLanding"),
+    profile:   $("#viewProfile"),
+    dashboard: $("#viewDashboard"),
+};
 
-// ───────────────────────── STEP MANAGEMENT ─────────────────────────
-function showStep(sectionToShow) {
-    [welcomeSection, step1, step2].forEach((s) => {
-        s.classList.remove("active");
-        s.style.display = "none";
+let userProfile = null;  // cached health profile
+
+// ── View Manager ────────────────────────────────────────────────
+function showView(name) {
+    Object.values(views).forEach((v) => {
+        v.classList.remove("active");
+        v.style.display = "none";
     });
-    sectionToShow.style.display = "block";
-    // Trigger reflow for the CSS animation
-    void sectionToShow.offsetWidth;
-    sectionToShow.classList.add("active");
+    const target = views[name];
+    target.style.display = "block";
+    void target.offsetWidth;          // trigger reflow
+    target.classList.add("active");
     window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-// ───────────────────────── GOOGLE SIGN-IN ─────────────────────────
-/**
- * Called by the Google Identity Services library after user signs in.
- */
+// ── Toast ───────────────────────────────────────────────────────
+function toast(msg, type = "info") {
+    const el = document.createElement("div");
+    el.className = `toast toast-${type}`;
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(() => { el.style.opacity = "0"; el.style.transition = "opacity .4s"; }, 3500);
+    setTimeout(() => el.remove(), 4000);
+}
+
+// ── Google Sign-In ──────────────────────────────────────────────
 function handleGoogleSignIn(response) {
     fetch("/api/auth/google", {
         method: "POST",
@@ -51,113 +53,152 @@ function handleGoogleSignIn(response) {
         .then((r) => r.json())
         .then((data) => {
             if (data.success) {
-                setUser(data.user);
-                showStep(step1);
+                onSignedIn(data.user);
             } else {
-                showToast("Sign-in failed: " + data.error, "error");
+                toast("Sign-in failed: " + data.error, "error");
             }
         })
-        .catch(() => showToast("Network error during sign-in.", "error"));
+        .catch(() => toast("Network error during sign-in.", "error"));
 }
-
-// Expose globally so the GIS library callback can find it
 window.handleGoogleSignIn = handleGoogleSignIn;
 
-function setUser(user) {
-    currentUser = user;
-    userAvatar.src = user.picture || "";
-    userNameEl.textContent = user.name || "User";
-    userMenu.classList.remove("hidden");
-    // Hide the Google sign-in button
-    const gsiBtn = $("#googleSignInBtn");
-    if (gsiBtn) gsiBtn.style.display = "none";
+function onSignedIn(user) {
+    $("#userAvatar").src = user.picture || "";
+    $("#userName").textContent = user.name || "User";
+    $("#userChip").classList.remove("hidden");
+    const gBtn = $("#googleSignInBtn");
+    if (gBtn) gBtn.style.display = "none";
+
+    // Check if profile is already saved in localStorage
+    const saved = localStorage.getItem("smartbite_profile");
+    if (saved) {
+        userProfile = JSON.parse(saved);
+        showView("dashboard");
+        loadAnalysis();
+    } else {
+        showView("profile");
+    }
 }
 
-function clearUser() {
-    currentUser = null;
-    userMenu.classList.add("hidden");
-    const gsiBtn = $("#googleSignInBtn");
-    if (gsiBtn) gsiBtn.style.display = "block";
-}
-
-// ───────────────────────── INIT: Render Google button ─────────────────────────
+// ── Init ────────────────────────────────────────────────────────
 window.addEventListener("load", () => {
-    // Check if already signed in (server session)
+    // Check server session
     fetch("/api/auth/me")
         .then((r) => r.json())
         .then((data) => {
-            if (data.authenticated) {
-                setUser(data.user);
-                showStep(step1);
-            }
+            if (data.authenticated) onSignedIn(data.user);
         })
         .catch(() => {});
 
-    // Render the Google sign-in button if GIS library is loaded and client ID is set
+    // Render Google button or demo button
     if (GOOGLE_CLIENT_ID && typeof google !== "undefined") {
         google.accounts.id.initialize({
             client_id: GOOGLE_CLIENT_ID,
             callback: handleGoogleSignIn,
         });
         google.accounts.id.renderButton($("#googleSignInBtn"), {
-            theme: "filled_black",
-            size: "medium",
-            shape: "pill",
-            text: "signin_with",
+            theme: "filled_black", size: "medium", shape: "pill",
         });
     } else {
-        // Demo mode: show a manual sign-in button when no client ID is configured
-        const demoBtn = document.createElement("button");
-        demoBtn.className = "btn-logout";
-        demoBtn.style.cssText = "border-color:var(--primary-light);color:var(--primary-light);padding:0.5rem 1.2rem;font-size:0.85rem;";
-        demoBtn.textContent = "🔑 Demo Sign In";
-        demoBtn.addEventListener("click", () => {
-            const name = prompt("Enter your name for the demo:");
-            if (!name) return;
-            const user = { name, email: "", picture: "" };
-            // Create a lightweight session on the server
-            fetch("/api/auth/google", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                // Send a fake JWT-like token with base64 payload for demo
-                body: JSON.stringify({
-                    credential: "header." + btoa(JSON.stringify(user)) + ".sig",
-                }),
-            })
-                .then((r) => r.json())
-                .then((data) => {
-                    if (data.success) { setUser(data.user); showStep(step1); }
-                });
-        });
-        $("#googleSignInBtn").appendChild(demoBtn);
+        createDemoButton();
     }
 });
 
-// ───────────────────────── LOGOUT ─────────────────────────
-btnLogout.addEventListener("click", () => {
-    fetch("/api/auth/logout", { method: "POST" })
-        .then(() => {
-            clearUser();
-            showStep(welcomeSection);
-        });
+function createDemoButton() {
+    const btn = document.createElement("button");
+    btn.className = "btn-link";
+    btn.style.cssText = "color:var(--c-primary-lt);font-weight:600;font-size:.85rem";
+    btn.textContent = "🔑 Demo Sign In";
+    btn.addEventListener("click", () => {
+        const name = prompt("Enter your name:");
+        if (!name) return;
+        const user = { name, email: "", picture: "" };
+        fetch("/api/auth/google", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ credential: "h." + btoa(JSON.stringify(user)) + ".s" }),
+        })
+            .then((r) => r.json())
+            .then((d) => { if (d.success) onSignedIn(d.user); });
+    });
+    $("#googleSignInBtn").appendChild(btn);
+}
+
+// ── Logout ──────────────────────────────────────────────────────
+$("#btnLogout").addEventListener("click", () => {
+    fetch("/api/auth/logout", { method: "POST" }).then(() => {
+        $("#userChip").classList.add("hidden");
+        const gBtn = $("#googleSignInBtn");
+        if (gBtn) gBtn.style.display = "block";
+        showView("landing");
+    });
 });
 
-// ───────────────────────── FORM SUBMISSION ─────────────────────────
-preferencesForm.addEventListener("submit", async (e) => {
+// ── Profile Form ────────────────────────────────────────────────
+$("#profileForm").addEventListener("submit", async (e) => {
     e.preventDefault();
+    userProfile = {
+        age:      $("#pAge").value,
+        weight:   $("#pWeight").value,
+        height:   $("#pHeight").value,
+        goal:     $("#pGoal").value,
+        activity: $("#pActivity").value,
+        diet:     $("#pDiet").value || "None",
+        allergies:$("#pAllergies").value || "None",
+    };
+    localStorage.setItem("smartbite_profile", JSON.stringify(userProfile));
+    showView("dashboard");
+    loadAnalysis();
+});
+
+// ── Load Health Analysis ────────────────────────────────────────
+async function loadAnalysis() {
+    if (!userProfile) return;
+    try {
+        const res = await fetch("/api/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(userProfile),
+        });
+        const data = await res.json();
+        if (data.success) {
+            const a = data.analysis;
+            $("#statBMI").textContent = parseFloat(a.bmi).toFixed(1);
+            $("#statCal").textContent = a.daily_calories;
+            $("#statProtein").textContent = a.protein_g + "g";
+            $("#statWater").textContent = parseFloat(a.water_liters).toFixed(1) + "L";
+
+            // Show a random tip
+            if (a.tips && a.tips.length) {
+                const tip = a.tips[Math.floor(Math.random() * a.tips.length)];
+                $("#tipsText").textContent = tip;
+                $("#tipsBanner").classList.remove("hidden");
+            }
+        }
+    } catch (err) {
+        console.warn("Analysis failed:", err);
+    }
+}
+
+// ── Meal Generation ─────────────────────────────────────────────
+$("#mealForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btnLabel = $(".btn-label");
+    const spinner  = $("#spinner");
+
+    btnLabel.textContent = "Generating…";
+    spinner.classList.remove("hidden");
+    $("#btnGenerate").disabled = true;
 
     const payload = {
-        goals:       $("#goals").value,
-        diet:        $("#diet").value,
-        ingredients: $("#ingredients").value,
-        allergies:   $("#allergies").value,
-        activity:    $("#activity").value,
+        goal:        userProfile?.goal || "Balanced",
+        diet:        userProfile?.diet || "None",
+        allergies:   userProfile?.allergies || "None",
+        activity:    userProfile?.activity || "Moderate",
+        ingredients: $("#mIngredients").value,
+        mealType:    $("#mMealType").value,
+        count:       $("#mCount").value,
     };
-
-    // Loading state
-    btnText.textContent = "Generating…";
-    loadingSpinner.classList.remove("hidden");
-    btnSubmit.disabled = true;
 
     try {
         const res = await fetch("/api/recommend", {
@@ -167,55 +208,75 @@ preferencesForm.addEventListener("submit", async (e) => {
         });
         const data = await res.json();
 
-        if (data.success) {
-            recipeResult.innerHTML = data.recommendation;
-            saveMealToHistory(payload, data.recommendation);
-            showStep(step2);
+        if (data.success && Array.isArray(data.meals)) {
+            renderMeals(data.meals);
+            toast("Meals generated successfully!", "success");
         } else {
-            showToast(data.error || "Could not generate recommendations.", "error");
+            toast(data.error || "Failed to generate meals.", "error");
         }
     } catch (err) {
-        showToast("Server unreachable – is the backend running?", "error");
+        toast("Server unreachable. Is the backend running?", "error");
     } finally {
-        btnText.textContent = "✨ Generate My Meals";
-        loadingSpinner.classList.add("hidden");
-        btnSubmit.disabled = false;
+        btnLabel.textContent = "✨ Generate Meals";
+        spinner.classList.add("hidden");
+        $("#btnGenerate").disabled = false;
     }
 });
 
-// ───────────────────────── BACK BUTTON ─────────────────────────
-btnBack.addEventListener("click", () => showStep(step1));
+// ── Render Meal Cards ───────────────────────────────────────────
+function renderMeals(meals) {
+    const container = $("#mealsContainer");
+    container.innerHTML = "";
 
-// ───────────────────────── MEAL HISTORY (localStorage) ─────────────────────────
-function saveMealToHistory(input, html) {
+    meals.forEach((m, i) => {
+        const card = document.createElement("div");
+        card.className = "meal-card";
+        card.style.animationDelay = `${i * 0.1}s`;
+
+        const ingredientsList = Array.isArray(m.ingredients)
+            ? m.ingredients.join(", ")
+            : m.ingredients || "";
+
+        card.innerHTML = `
+            <div class="meal-name">${escHtml(m.name || "Meal")}</div>
+            <div class="meal-desc">${escHtml(m.description || "")}</div>
+            <div class="meal-macros">
+                <span class="macro-tag macro-cal">${m.calories || 0} kcal</span>
+                <span class="macro-tag macro-protein">${m.protein || 0}g protein</span>
+                <span class="macro-tag macro-carbs">${m.carbs || 0}g carbs</span>
+                <span class="macro-tag macro-fat">${m.fat || 0}g fat</span>
+            </div>
+            <div class="meal-ingredients"><strong>Ingredients:</strong> ${escHtml(ingredientsList)}</div>
+            <div class="meal-tip">💡 ${escHtml(m.tip || "")}</div>
+        `;
+        container.appendChild(card);
+    });
+
+    // Save to history
     try {
         const history = JSON.parse(localStorage.getItem("smartbite_history") || "[]");
-        history.unshift({
-            date: new Date().toISOString(),
-            goals: input.goals,
-            diet: input.diet,
-        });
-        // Keep only last 20 entries
-        localStorage.setItem("smartbite_history", JSON.stringify(history.slice(0, 20)));
-    } catch (_) { /* localStorage unavailable */ }
+        history.unshift({ date: new Date().toISOString(), count: meals.length });
+        localStorage.setItem("smartbite_history", JSON.stringify(history.slice(0, 30)));
+    } catch (_) {}
 }
 
-// ───────────────────────── TOAST NOTIFICATIONS ─────────────────────────
-function showToast(message, type = "info") {
-    const toast = document.createElement("div");
-    toast.textContent = message;
-    toast.style.cssText = `
-        position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
-        padding: 0.9rem 1.6rem; border-radius: 12px; font-size: 0.9rem;
-        font-weight: 500; z-index: 9999; animation: slideUp 0.4s ease forwards;
-        color: #fff; max-width: 90vw; text-align: center;
-        background: ${type === "error" ? "#EF4444" : "#7C3AED"};
-        box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-    `;
-    document.body.appendChild(toast);
-    setTimeout(() => {
-        toast.style.opacity = "0";
-        toast.style.transition = "opacity 0.4s ease";
-        setTimeout(() => toast.remove(), 400);
-    }, 4000);
+function escHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
 }
+
+// ── Edit Profile ────────────────────────────────────────────────
+$("#btnEditProfile").addEventListener("click", () => {
+    // Prefill form with saved data
+    if (userProfile) {
+        $("#pAge").value = userProfile.age || "";
+        $("#pWeight").value = userProfile.weight || "";
+        $("#pHeight").value = userProfile.height || "";
+        $("#pGoal").value = userProfile.goal || "";
+        $("#pActivity").value = userProfile.activity || "";
+        $("#pDiet").value = userProfile.diet || "";
+        $("#pAllergies").value = userProfile.allergies || "";
+    }
+    showView("profile");
+});
