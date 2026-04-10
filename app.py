@@ -40,7 +40,7 @@ def recommend():
 
         prompt = prompt_template.format(goals=goals, diet=diet, ingredients=ingredients)
 
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         response = model.generate_content(prompt)
         
         return jsonify({
