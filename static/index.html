@@ -3,60 +3,142 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SmartBite - Your AI Food Assistant</title>
-    <!-- Modern Typography from Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <meta name="description" content="SmartBite – An AI-powered food assistant that helps you build healthier eating habits with personalised meal recommendations.">
+    <title>SmartBite — AI Nutrition Assistant</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="dynamic-background">
+    <!-- Animated background blobs -->
+    <div class="dynamic-background" aria-hidden="true">
         <div class="blob blob1"></div>
         <div class="blob blob2"></div>
         <div class="blob blob3"></div>
     </div>
 
-    <main class="app-container">
-        <!-- Header -->
-        <header>
-            <h1 class="logo">SmartBite<span>.</span></h1>
-            <p class="subtitle">Your context-aware nutrition assistant</p>
-        </header>
+    <!-- ======================== NAVIGATION BAR ======================== -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-brand">
+            <span class="nav-logo">🍏</span>
+            <span class="nav-title">SmartBite</span>
+        </div>
+        <div class="nav-actions">
+            <!-- Shown when signed out -->
+            <div id="googleSignInBtn"></div>
+            <!-- Shown when signed in -->
+            <div id="userMenu" class="user-menu hidden">
+                <img id="userAvatar" class="avatar" src="" alt="User avatar" width="36" height="36">
+                <span id="userName" class="user-name"></span>
+                <button id="btnLogout" class="btn-logout" aria-label="Sign out">Sign Out</button>
+            </div>
+        </div>
+    </nav>
 
-        <!-- Step 1: Onboarding Questionnaire -->
-        <section id="step1" class="step-container active">
-            <h2 class="step-title">Let's craft your perfect meal</h2>
-            <form id="preferencesForm" class="glass-form">
-                
-                <div class="input-group">
-                    <label for="goals">Health Goals 🎯</label>
-                    <input type="text" id="goals" placeholder="e.g., Weight loss, Muscle gain, Maintenance" required>
+    <main class="app-container" role="main">
+
+        <!-- ======================== WELCOME / SIGN-IN GATE ======================== -->
+        <section id="welcomeSection" class="step-container active" aria-label="Welcome">
+            <div class="hero-card glass-card">
+                <h1 class="hero-title">Eat Smarter<span class="dot">.</span></h1>
+                <p class="hero-subtitle">Your personal AI nutritionist powered by Google Gemini. Sign in with Google to unlock personalised meal recommendations tailored to your goals and ingredients.</p>
+                <div class="features-grid">
+                    <div class="feature-item">
+                        <span class="feature-icon">🎯</span>
+                        <h3>Goal-Aware</h3>
+                        <p>Meals tuned to weight loss, muscle gain, or maintenance.</p>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🧠</span>
+                        <h3>AI-Powered</h3>
+                        <p>Google Gemini crafts creative recipes from your fridge.</p>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🛡️</span>
+                        <h3>Allergy Safe</h3>
+                        <p>Respects your restrictions and allergies every time.</p>
+                    </div>
+                </div>
+                <p class="cta-hint">👆 Click <strong>Sign in with Google</strong> in the top-right corner to get started!</p>
+            </div>
+        </section>
+
+        <!-- ======================== STEP 1: PREFERENCES FORM ======================== -->
+        <section id="step1" class="step-container" aria-label="Your preferences">
+            <h2 class="step-title">Tell us about yourself</h2>
+            <form id="preferencesForm" class="glass-card" autocomplete="off">
+
+                <div class="form-row">
+                    <div class="input-group">
+                        <label for="goals">Health Goals 🎯</label>
+                        <select id="goals" required aria-required="true">
+                            <option value="" disabled selected>Select your goal…</option>
+                            <option value="Weight Loss">Weight Loss</option>
+                            <option value="Muscle Gain">Muscle Gain</option>
+                            <option value="Maintenance">Maintenance</option>
+                            <option value="Heart Health">Heart Health</option>
+                            <option value="Better Energy">Better Energy</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="activity">Activity Level 🏃</label>
+                        <select id="activity" required aria-required="true">
+                            <option value="" disabled selected>Select level…</option>
+                            <option value="Sedentary">Sedentary</option>
+                            <option value="Lightly Active">Lightly Active</option>
+                            <option value="Moderately Active">Moderately Active</option>
+                            <option value="Very Active">Very Active</option>
+                        </select>
+                    </div>
                 </div>
 
-                <div class="input-group">
-                    <label for="diet">Dietary Preferences 🥗</label>
-                    <input type="text" id="diet" placeholder="e.g., Vegan, Gluten-free, Keto, No restrictions" required>
+                <div class="form-row">
+                    <div class="input-group">
+                        <label for="diet">Dietary Preferences 🥗</label>
+                        <input type="text" id="diet" placeholder="e.g., Vegan, Keto, No restrictions" required aria-required="true">
+                    </div>
+                    <div class="input-group">
+                        <label for="allergies">Allergies ⚠️</label>
+                        <input type="text" id="allergies" placeholder="e.g., Peanuts, Dairy, None">
+                    </div>
                 </div>
 
-                <div class="input-group">
+                <div class="input-group full-width">
                     <label for="ingredients">What's in your fridge? 🛒</label>
-                    <textarea id="ingredients" placeholder="e.g., Chicken breast, spinach, eggs, rice..." rows="3" required></textarea>
+                    <textarea id="ingredients" placeholder="e.g., Chicken breast, spinach, eggs, rice, tomatoes…" rows="3" required aria-required="true"></textarea>
                 </div>
 
                 <button type="submit" class="btn-primary" id="btn-submit">
-                    <span>Generate Magic</span>
+                    <span class="btn-text">✨ Generate My Meals</span>
                     <div class="spinner hidden" id="loadingSpinner"></div>
                 </button>
             </form>
         </section>
 
-        <!-- Step 2: Recommendations Dashboard -->
-        <section id="step2" class="step-container">
-            <button class="btn-back" id="btn-back">← Start Over</button>
-            <div id="recipeResult" class="glass-result">
-                <!-- Gemini content will be injected here -->
+        <!-- ======================== STEP 2: RESULTS DASHBOARD ======================== -->
+        <section id="step2" class="step-container" aria-label="Your recommendations">
+            <div class="result-header">
+                <button class="btn-back" id="btn-back" aria-label="Go back to preferences">
+                    <span>←</span> New Recommendations
+                </button>
+            </div>
+            <div id="recipeResult" class="glass-card result-content">
+                <!-- Gemini AI content injected here -->
             </div>
         </section>
+
     </main>
+
+    <!-- ======================== FOOTER ======================== -->
+    <footer class="app-footer" role="contentinfo">
+        <p>Crafted with ❤️ &amp; powered by <strong>Google Gemini</strong> &amp; <strong>Google Sign-In</strong></p>
+    </footer>
 
     <script src="script.js"></script>
 </body>
