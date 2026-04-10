@@ -110,6 +110,11 @@ def extract_json(text: str):
 def serve_index():
     return send_from_directory("static", "index.html")
 
+@app.route("/api/config")
+def config():
+    """Expose non-secret config to frontend (e.g. Google Client ID)."""
+    return jsonify({"googleClientId": GOOGLE_CLIENT_ID})
+
 @app.route("/<path:path>")
 def serve_static(path):
     return send_from_directory("static", path)

@@ -56,7 +56,7 @@ button{font-family:inherit}
 .nav{position:sticky;top:0;z-index:100;
      background:rgba(8,12,24,.7);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
      border-bottom:1px solid var(--c-border)}
-.nav-inner{max-width:960px;margin:0 auto;padding:.75rem 1.5rem;display:flex;justify-content:space-between;align-items:center}
+.nav-inner{margin:0 auto;padding:.75rem 2rem;display:flex;justify-content:space-between;align-items:center}
 .nav-brand{display:flex;align-items:center;gap:.5rem;font-family:'Outfit',sans-serif;font-weight:700;font-size:1.25rem}
 .brand-icon{font-size:1.4rem}
 .brand-accent{color:var(--c-primary-lt)}
@@ -96,8 +96,9 @@ button{font-family:inherit}
 .vcard h3{font-size:.95rem;margin-bottom:.3rem}
 .vcard p{font-size:.82rem;color:var(--c-text2)}
 
-.landing-cta{font-size:.95rem;color:var(--c-text3);animation:pulse 2.5s ease-in-out infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+.landing-actions{display:flex;flex-direction:column;align-items:center;gap:.8rem}
+.btn-lg{padding:1rem 2.5rem;font-size:1.05rem;border-radius:var(--r-md)}
+.landing-or{font-size:.85rem;color:var(--c-text3)}
 
 /* ── Card ──────────────────────────────────────────────────────── */
 .card{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--r-xl);

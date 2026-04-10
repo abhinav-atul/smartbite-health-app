@@ -5,7 +5,7 @@
  */
 
 // ── Config ──────────────────────────────────────────────────────
-const GOOGLE_CLIENT_ID = "";  // Set via Google Cloud Console for production
+let GOOGLE_CLIENT_ID = "";  // Loaded dynamically from server
 
 // ── DOM Helpers ─────────────────────────────────────────────────
 const $ = (s) => document.querySelector(s);
@@ -81,16 +81,22 @@ function onSignedIn(user) {
 }
 
 // ── Init ────────────────────────────────────────────────────────
-window.addEventListener("load", () => {
-    // Check server session
-    fetch("/api/auth/me")
-        .then((r) => r.json())
-        .then((data) => {
-            if (data.authenticated) onSignedIn(data.user);
-        })
-        .catch(() => {});
+window.addEventListener("load", async () => {
+    // Fetch Google Client ID from server
+    try {
+        const cfgRes = await fetch("/api/config");
+        const cfg = await cfgRes.json();
+        GOOGLE_CLIENT_ID = cfg.googleClientId || "";
+    } catch (_) {}
 
-    // Render Google button or demo button
+    // Check server session
+    try {
+        const meRes = await fetch("/api/auth/me");
+        const meData = await meRes.json();
+        if (meData.authenticated) { onSignedIn(meData.user); return; }
+    } catch (_) {}
+
+    // Render Google button if Client ID is configured
     if (GOOGLE_CLIENT_ID && typeof google !== "undefined") {
         google.accounts.id.initialize({
             client_id: GOOGLE_CLIENT_ID,
@@ -100,7 +106,20 @@ window.addEventListener("load", () => {
             theme: "filled_black", size: "medium", shape: "pill",
         });
     } else {
+        // No client ID configured — show demo sign-in in navbar
         createDemoButton();
+    }
+});
+
+// ── Continue as Guest (no login) ────────────────────────────────
+$("#btnContinueGuest").addEventListener("click", () => {
+    const saved = localStorage.getItem("smartbite_profile");
+    if (saved) {
+        userProfile = JSON.parse(saved);
+        showView("dashboard");
+        loadAnalysis();
+    } else {
+        showView("profile");
     }
 });
 
