@@ -40,7 +40,7 @@ GEMINI_API_KEY: str = os.environ.get("GEMINI_API_KEY", "")
 GOOGLE_CLIENT_ID: str = os.environ.get("GOOGLE_CLIENT_ID", "")
 
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-2.0-flash")
+model = genai.GenerativeModel("gemma-3-27b-it")
 
 # Structured JSON logging (auto-ingested by Google Cloud Logging on Cloud Run)
 logging.basicConfig(
