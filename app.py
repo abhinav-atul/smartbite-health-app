@@ -18,6 +18,7 @@ import json
 import logging
 import re
 import base64
+import sqlite3
 from datetime import datetime
 from typing import Any, Dict, Optional, Tuple, Union
 
@@ -50,6 +51,27 @@ logging.basicConfig(
     datefmt="%Y-%m-%dT%H:%M:%SZ",
 )
 logger = logging.getLogger("smartbite")
+
+# ---------------------------------------------------------------------------
+# Database Initialization
+# ---------------------------------------------------------------------------
+
+def init_db() -> None:
+    try:
+        conn = sqlite3.connect("users.db")
+        c = conn.cursor()
+        c.execute('''CREATE TABLE IF NOT EXISTS users (
+            email TEXT PRIMARY KEY,
+            name TEXT,
+            picture TEXT,
+            profile_json TEXT
+        )''')
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.error("DB init error: %s", str(e))
+
+init_db()
 
 # ---------------------------------------------------------------------------
 # Security — HTTP Headers (OWASP best practices)
@@ -252,6 +274,15 @@ def google_auth() -> Tuple[Response, int]:
             "email": user_info.get("email", ""),
             "picture": user_info.get("picture", ""),
         }
+
+        if session["user"]["email"]:
+            conn = sqlite3.connect("users.db")
+            c = conn.cursor()
+            c.execute("INSERT OR IGNORE INTO users (email, name, picture) VALUES (?, ?, ?)",
+                      (session["user"]["email"], session["user"]["name"], session["user"]["picture"]))
+            conn.commit()
+            conn.close()
+
         return jsonify({"success": True, "user": session["user"]}), 200
     except Exception as e:
         logger.exception("Auth error: %s", str(e))
@@ -272,6 +303,32 @@ def me() -> Response:
     if "user" in session:
         return jsonify({"authenticated": True, "user": session["user"]})
     return jsonify({"authenticated": False})
+
+
+@app.route("/api/profile", methods=["GET", "POST"])
+def handle_profile() -> Tuple[Response, int]:
+    """Get or update user profile preferences."""
+    if "user" not in session or not session["user"].get("email"):
+        return jsonify({"success": False, "error": "Not authenticated."}), 401
+    
+    email: str = session["user"]["email"]
+    conn = sqlite3.connect("users.db")
+    c = conn.cursor()
+
+    if request.method == "POST":
+        profile_data = request.get_json()
+        c.execute("UPDATE users SET profile_json = ? WHERE email = ?", (json.dumps(profile_data), email))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True, "profile": profile_data}), 200
+
+    c.execute("SELECT profile_json FROM users WHERE email = ?", (email,))
+    row = c.fetchone()
+    conn.close()
+    
+    if row and row[0]:
+        return jsonify({"success": True, "profile": json.loads(row[0])}), 200
+    return jsonify({"success": True, "profile": None}), 200
 
 # ---------------------------------------------------------------------------
 # Core API — Meal Recommendations (Google Gemini)

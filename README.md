@@ -1,5 +1,9 @@
 # 🍏 SmartBite — AI Food & Health Assistant
 
+> **Note:** This project was created in the AMD Slingshot regional ideathon, in the promptathon, within 2 hours.
+
+🚀 **Live Server:** [https://smartbite-health-app-994936472168.europe-west1.run.app/](https://smartbite-health-app-994936472168.europe-west1.run.app/)
+
 A smart, context-aware web application that helps individuals **make better food choices and build healthier eating habits** by leveraging user data, dietary context, and AI-powered analysis.
 
 ---

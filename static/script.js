@@ -62,21 +62,48 @@ function handleGoogleSignIn(response) {
 }
 window.handleGoogleSignIn = handleGoogleSignIn;
 
-function onSignedIn(user) {
+async function onSignedIn(user) {
     $("#userAvatar").src = user.picture || "";
     $("#userName").textContent = user.name || "User";
     $("#userChip").classList.remove("hidden");
     const gBtn = $("#googleSignInBtn");
     if (gBtn) gBtn.style.display = "none";
 
+    try {
+        const res = await fetch("/api/profile");
+        const data = await res.json();
+        if (data.success && data.profile) {
+            userProfile = data.profile;
+            localStorage.setItem("smartbite_profile", JSON.stringify(userProfile));
+            showView("dashboard");
+            loadAnalysis();
+            return;
+        }
+    } catch (err) {
+        console.warn("Failed to fetch backend profile", err);
+    }
+
     // Check if profile is already saved in localStorage
     const saved = localStorage.getItem("smartbite_profile");
     if (saved) {
         userProfile = JSON.parse(saved);
+        saveProfileToBackend(userProfile);
         showView("dashboard");
         loadAnalysis();
     } else {
         showView("profile");
+    }
+}
+
+async function saveProfileToBackend(profile) {
+    try {
+        await fetch("/api/profile", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(profile)
+        });
+    } catch (err) {
+        console.warn("Failed to save backend profile", err);
     }
 }
 
@@ -166,6 +193,7 @@ $("#profileForm").addEventListener("submit", async (e) => {
         allergies:$("#pAllergies").value || "None",
     };
     localStorage.setItem("smartbite_profile", JSON.stringify(userProfile));
+    await saveProfileToBackend(userProfile);
     showView("dashboard");
     loadAnalysis();
 });
